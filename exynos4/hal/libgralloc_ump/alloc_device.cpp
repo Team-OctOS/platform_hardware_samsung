@@ -60,6 +60,7 @@
 
 #if HAVE_ANDROID_OS
 #include <pixelflinger/format.h>
+#endif
 
 #include "videodev2.h"
 #include "s5p_fimc.h"
