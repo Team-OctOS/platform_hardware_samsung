@@ -310,14 +310,14 @@ static int responseDcRtInfo(Parcel &p, void *response, size_t responselen);
 
 static int decodeVoiceRadioTechnology (RIL_RadioState radioState);
 static int decodeCdmaSubscriptionSource (RIL_RadioState radioState);
-static RIL_RadioState processRadioState(RIL_RadioState newRadioState);
+static RIL_RadioState processRadioState(RIL_RadioState newRadioState, RIL_SOCKET_ID socket_id);
 
 #ifdef RIL_SHLIB
 #if defined(ANDROID_MULTI_SIM)
-extern "C" void RIL_onUnsolicitedResponse(int unsolResponse, void *data,
+extern "C" void RIL_onUnsolicitedResponse(int unsolResponse, const void *data,
                                 size_t datalen, RIL_SOCKET_ID socket_id);
 #else
-extern "C" void RIL_onUnsolicitedResponse(int unsolResponse, void *data,
+extern "C" void RIL_onUnsolicitedResponse(int unsolResponse, const void *data,
                                 size_t datalen);
 #endif
 #endif
@@ -805,9 +805,9 @@ dispatchDial (Parcel &p, RequestInfo *pRI) {
         }
 
         if (uusPresent == 0) {
-#ifdef MODEM_TYPE_6262
+#if defined(MODEM_TYPE_XMM6262) || defined(MODEM_TYPE_XMM7260)
             dial.uusInfo = NULL;
-#elif MODEM_TYPE_6260
+#elif defined(MODEM_TYPE_XMM6260)
             /* Samsung hack */
             memset(&uusInfo, 0, sizeof(RIL_UUS_Info));
             uusInfo.uusType = (RIL_UUS_Type) 0;
@@ -4336,7 +4336,7 @@ static bool is3gpp2(int radioTech) {
  * returned when telephony framework requests them
  */
 static RIL_RadioState
-processRadioState(RIL_RadioState newRadioState, RIL_SOCKET_ID socket_id) {
+processRadioState(RIL_RadioState newRadioState, RIL_SOCKET_ID socket_id __unused) {
 
     if((newRadioState > RADIO_STATE_UNAVAILABLE) && (newRadioState < RADIO_STATE_ON)) {
         int newVoiceRadioTech;
@@ -4374,11 +4374,11 @@ processRadioState(RIL_RadioState newRadioState, RIL_SOCKET_ID socket_id) {
 
 #if defined(ANDROID_MULTI_SIM)
 extern "C"
-void RIL_onUnsolicitedResponse(int unsolResponse, void *data,
+void RIL_onUnsolicitedResponse(int unsolResponse, const void *data,
                                 size_t datalen, RIL_SOCKET_ID socket_id)
 #else
 extern "C"
-void RIL_onUnsolicitedResponse(int unsolResponse, void *data,
+void RIL_onUnsolicitedResponse(int unsolResponse, const void *data,
                                 size_t datalen)
 #endif
 {
