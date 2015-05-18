@@ -284,6 +284,7 @@ static void dispatchRadioCapability(Parcel &p, RequestInfo *pRI);
 static int responseInts(Parcel &p, void *response, size_t responselen);
 static int responseIntsGetPreferredNetworkType(Parcel &p, void *response, size_t responselen);
 static int responseStrings(Parcel &p, void *response, size_t responselen);
+static int responseStringsNetworks(Parcel &p, void *response, size_t responselen);
 static int responseStrings(Parcel &p, void *response, size_t responselen, bool network_search);
 static int responseString(Parcel &p, void *response, size_t responselen);
 static int responseVoid(Parcel &p, void *response, size_t responselen);
@@ -2271,6 +2272,10 @@ static int responseStrings(Parcel &p, void *response, size_t responselen) {
     return responseStrings(p, response, responselen, false);
 }
 
+static int responseStringsNetworks(Parcel &p, void *response, size_t responselen) {
+    return responseStrings(p, response, responselen, true);
+}
+
 /** response is a char **, pointing to an array of char *'s */
 static int responseStrings(Parcel &p, void *response, size_t responselen, bool network_search) {
     int numStrings;
@@ -2291,11 +2296,17 @@ static int responseStrings(Parcel &p, void *response, size_t responselen, bool n
         char **p_cur = (char **) response;
 
         numStrings = responselen / sizeof(char *);
-        p.writeInt32 (numStrings);
+        if (network_search) {
+            p.writeInt32 ((numStrings / 5) * 4);
+        } else {
+            p.writeInt32 (numStrings);
+        }
 
         /* each string*/
         startResponse;
         for (int i = 0 ; i < numStrings ; i++) {
+            if (network_search && (i % 5 == 0))
+                continue;
             appendPrintBuf("%s%s,", printBuf, (char*)p_cur[i]);
             writeStringToParcel (p, p_cur[i]);
         }
@@ -2979,15 +2990,19 @@ static int responseRilSignalStrength(Parcel &p,
     if (responselen >= sizeof (RIL_SignalStrength_v5)) {
         RIL_SignalStrength_v10 *p_cur = ((RIL_SignalStrength_v10 *) response);
 
-#if defined(MODEM_TYPE_XMM6262) || defined(MODEM_TYPE_XMM7260)
         gsmSignalStrength = p_cur->GW_SignalStrength.signalStrength & 0xFF;
+
+#ifdef MODEM_TYPE_XMM6260
+        if (gsmSignalStrength < 0 ||
+                (gsmSignalStrength > 31 && p_cur->GW_SignalStrength.signalStrength != 99)) {
+            gsmSignalStrength = p_cur->CDMA_SignalStrength.dbm;
+        }
+#else
         if (gsmSignalStrength < 0) {
             gsmSignalStrength = 99;
         } else if (gsmSignalStrength > 31 && gsmSignalStrength != 99) {
             gsmSignalStrength = 31;
         }
-#else
-        gsmSignalStrength = p_cur->GW_SignalStrength.signalStrength;
 #endif
         p.writeInt32(gsmSignalStrength);
 
